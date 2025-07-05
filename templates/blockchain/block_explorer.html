@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Block Explorer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .block-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border-left: 4px solid var(--primary-color);
+    }
+    
+    .block-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .block-header {
+        display: flex;
+        justify-content-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .block-index {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    
+    .block-hash {
+        font-family: 'Courier New', monospace;
+        font-size: 0.8rem;
+        color: #666;
+        word-break: break-all;
+    }
+    
+    .block-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .meta-item {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 8px;
+    }
+    
+    .meta-label {
+        font-size: 0.8rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .meta-value {
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    
+    .events-list {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+    }
+    
+    .event-item {
+        background: white;
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-left: 3px solid var(--secondary-color);
+    }
+    
+    .event-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .event-type {
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    
+    .event-severity {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    
+    .severity-high {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .severity-medium {
+        background: #f39c12;
+        color: white;
+    }
+    
+    .severity-low {
+        background: #27ae60;
+        color: white;
+    }
+    
+    .blockchain-nav {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    .blockchain-nav .nav-link {
+        color: var(--primary-color);
+        border-radius: 25px;
+        padding: 10px 20px;
+        margin: 5px;
+        transition: all 0.3s ease;
+    }
+    
+    .blockchain-nav .nav-link:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .blockchain-nav .nav-link.active {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .search-box {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    .hash-link {
+        color: var(--secondary-color);
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    
+    .hash-link:hover {
+        color: var(--primary-color);
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Blockchain Navigation -->
+    <div class="blockchain-nav">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="mb-0">
+                    <i class="fas fa-cubes me-2"></i>
+                    Block Explorer
+                </h1>
+            </div>
+            <div class="col-md-6">
+                <nav class="nav justify-content-end">
+                    <a class="nav-link" href="{% url 'blockchain:blockchain-dashboard' %}">
+                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                    </a>
+                    <a class="nav-link active" href="{% url 'blockchain:block-explorer' %}">
+                        <i class="fas fa-cubes me-1"></i> Block Explorer
+                    </a>
+                    <a class="nav-link" href="{% url 'blockchain:blockchain-add-event' %}">
+                        <i class="fas fa-plus me-1"></i> Add Event
+                    </a>
+                    <a class="nav-link" href="{% url 'blockchain:blockchain-logs-html' %}">
+                        <i class="fas fa-list me-1"></i> All Logs
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Box -->
+    <div class="search-box">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h4 class="mb-0">
+                    <i class="fas fa-search me-2"></i>
+                    Blockchain Overview
+                </h4>
+                <p class="text-muted mb-0">Total Blocks: {{ total_blocks }}</p>
+            </div>
+            <div class="col-md-6">
+                <form class="d-flex" method="get">
+                    <input type="number" class="form-control me-2" name="block" placeholder="Search by block index..." min="0" max="{{ total_blocks|add:'-1' }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blocks List -->
+    <div class="row">
+        <div class="col-12">
+            {% for block in blocks %}
+            <div class="block-card">
+                <div class="block-header">
+                    <div>
+                        <span class="block-index">Block #{{ block.index }}</span>
+                        <div class="block-hash">
+                            Hash: <span class="hash-link">{{ block.calculate_hash|slice:":16" }}...</span>
+                        </div>
+                    </div>
+                    <a href="?block={{ block.index }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-eye me-1"></i> View Details
+                    </a>
+                </div>
+                
+                <div class="block-meta">
+                    <div class="meta-item">
+                        <div class="meta-label">Timestamp</div>
+                        <div class="meta-value">{{ block.timestamp|date:'Y-m-d H:i:s' }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Events Count</div>
+                        <div class="meta-value">{{ block.events|length }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Nonce</div>
+                        <div class="meta-value">{{ block.nonce }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Merkle Root</div>
+                        <div class="meta-value">{{ block.merkle_root|slice:":16" }}...</div>
+                    </div>
+                </div>
+                
+                {% if block.events %}
+                <div class="events-list">
+                    <h6 class="mb-3">
+                        <i class="fas fa-list me-2"></i>
+                        Events ({{ block.events|length }})
+                    </h6>
+                    {% for event in block.events|slice:":3" %}
+                    <div class="event-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="event-type">{{ event.event_type }}</div>
+                                <div class="text-muted">{{ event.description|truncatechars:60 }}</div>
+                                <small class="text-muted">
+                                    {{ event.timestamp|date:'H:i:s' }} • 
+                                    Confidence: {{ event.confidence_score|floatformat:1 }}%
+                                </small>
+                            </div>
+                            <span class="event-severity severity-{{ event.severity|lower }}">{{ event.severity }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if block.events|length > 3 %}
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            +{{ block.events|length|add:"-3" }} more events
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>No events in this block</p>
+                </div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="text-center py-5">
+                <i class="fas fa-cube fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No blocks found</h4>
+                <p class="text-muted">The blockchain is empty. Add some events to create the first block.</p>
+                <a href="{% url 'blockchain:blockchain-add-event' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> Add First Event
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

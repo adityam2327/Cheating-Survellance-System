@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics - Surveillance System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 id="totalViolations">0</h3>
+            <p><i class="fas fa-exclamation-triangle me-2"></i>Total Violations</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 id="avgConfidence">0%</h3>
+            <p><i class="fas fa-percentage me-2"></i>Avg Confidence</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 id="sessionsCount">0</h3>
+            <p><i class="fas fa-clock me-2"></i>Total Sessions</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 id="detectionRate">0%</h3>
+            <p><i class="fas fa-eye me-2"></i>Detection Rate</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Violation Types Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="violationTypesChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Violations Over Time</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="violationsOverTimeChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-table me-2"></i>Recent Violations</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Timestamp</th>
+                                <th>Confidence</th>
+                                <th>Session</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentViolationsTable">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">
+                                    Loading violations...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Performance Metrics</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Detection Accuracy</label>
+                    <div class="progress">
+                        <div class="progress-bar" id="accuracyBar" role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Response Time</label>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" id="responseBar" role="progressbar" style="width: 0%">0ms</div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">System Uptime</label>
+                    <div class="progress">
+                        <div class="progress-bar bg-info" id="uptimeBar" role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadAnalyticsData();
+});
+
+function loadAnalyticsData() {
+    // Load total violations and average confidence
+    fetch('/analytics/violations/type/')
+        .then(res => res.json())
+        .then(data => {
+            let total = 0;
+            let typeLabels = [];
+            let typeCounts = [];
+            data.results.forEach(item => {
+                total += item.count;
+                typeLabels.push(item.violation_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()));
+                typeCounts.push(item.count);
+            });
+            document.getElementById('totalViolations').textContent = total;
+            loadViolationTypesChart(typeLabels, typeCounts);
+        });
+
+    // Load violations over time
+    fetch('/analytics/violations/time/')
+        .then(res => res.json())
+        .then(data => {
+            const labels = data.results.map(item => item.date);
+            const counts = data.results.map(item => item.count);
+            loadViolationsOverTimeChart(labels, counts);
+        });
+
+    // Load recent violations
+    loadRecentViolations();
+}
+
+function loadViolationTypesChart(labels, data) {
+    const ctx = document.getElementById('violationTypesChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: [
+                    '#e74c3c', '#f39c12', '#3498db', '#9b59b6', '#1abc9c', '#2ecc71', '#34495e'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+
+function loadViolationsOverTimeChart(labels, data) {
+    const ctx = document.getElementById('violationsOverTimeChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Violations',
+                data: data,
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function loadRecentViolations() {
+    fetch('/api/violations/?limit=5')
+        .then(res => res.json())
+        .then(data => {
+            const tableBody = document.getElementById('recentViolationsTable');
+            if (!data.results || data.results.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No recent violations.</td></tr>';
+                return;
+            }
+            tableBody.innerHTML = data.results.map(v => `
+                <tr>
+                    <td><span class="badge bg-danger">${v.violation_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span></td>
+                    <td>${new Date(v.timestamp).toLocaleString()}</td>
+                    <td>${(v.confidence * 100).toFixed(0)}%</td>
+                    <td>${v.session || ''}</td>
+                    <td><span class="badge bg-${v.is_resolved ? 'success' : 'warning'}">${v.is_resolved ? 'Resolved' : 'Pending'}</span></td>
+                </tr>
+            `).join('');
+        });
+}
+</script>
+{% endblock %} 

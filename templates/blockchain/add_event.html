@@ -1,0 +1,305 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add Blockchain Event{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .form-header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f8f9fa;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        font-weight: bold;
+        color: var(--primary-color);
+        margin-bottom: 8px;
+    }
+    
+    .form-control {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 12px 15px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.25);
+    }
+    
+    .form-select {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 12px 15px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.25);
+    }
+    
+    .btn-submit {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        border: none;
+        border-radius: 25px;
+        padding: 12px 30px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .help-text {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    .metadata-example {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 10px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.85rem;
+    }
+    
+    .blockchain-nav {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    .blockchain-nav .nav-link {
+        color: var(--primary-color);
+        border-radius: 25px;
+        padding: 10px 20px;
+        margin: 5px;
+        transition: all 0.3s ease;
+    }
+    
+    .blockchain-nav .nav-link:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .blockchain-nav .nav-link.active {
+        background: var(--primary-color);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Blockchain Navigation -->
+    <div class="blockchain-nav">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="mb-0">
+                    <i class="fas fa-plus me-2"></i>
+                    Add Blockchain Event
+                </h1>
+            </div>
+            <div class="col-md-6">
+                <nav class="nav justify-content-end">
+                    <a class="nav-link" href="{% url 'blockchain:blockchain-dashboard' %}">
+                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="{% url 'blockchain:block-explorer' %}">
+                        <i class="fas fa-cubes me-1"></i> Block Explorer
+                    </a>
+                    <a class="nav-link active" href="{% url 'blockchain:blockchain-add-event' %}">
+                        <i class="fas fa-plus me-1"></i> Add Event
+                    </a>
+                    <a class="nav-link" href="{% url 'blockchain:blockchain-logs-html' %}">
+                        <i class="fas fa-list me-1"></i> All Logs
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <div class="form-header">
+            <h2><i class="fas fa-link me-2"></i>Create New Blockchain Event</h2>
+            <p class="text-muted">Add a new event to the blockchain for secure logging and verification</p>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.event_type.id_for_label }}" class="form-label">
+                            <i class="fas fa-tag me-1"></i>Event Type
+                        </label>
+                        <select name="{{ form.event_type.name }}" id="{{ form.event_type.id_for_label }}" class="form-select" required>
+                            <option value="">Select event type...</option>
+                            <option value="gaze_detection">Gaze Detection</option>
+                            <option value="head_pose">Head Pose Detection</option>
+                            <option value="mobile_detection">Mobile Device Detection</option>
+                            <option value="multiple_faces">Multiple Faces Detected</option>
+                            <option value="face_occlusion">Face Occlusion</option>
+                            <option value="screen_sharing">Screen Sharing Detected</option>
+                            <option value="browser_switch">Browser Tab Switch</option>
+                            <option value="system_alert">System Alert</option>
+                        </select>
+                        <div class="help-text">Select the type of cheating event detected</div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.severity.id_for_label }}" class="form-label">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Severity Level
+                        </label>
+                        <select name="{{ form.severity.name }}" id="{{ form.severity.id_for_label }}" class="form-select" required>
+                            <option value="">Select severity...</option>
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HIGH">High</option>
+                        </select>
+                        <div class="help-text">Choose the severity level of the violation</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.description.id_for_label }}" class="form-label">
+                    <i class="fas fa-align-left me-1"></i>Description
+                </label>
+                <textarea name="{{ form.description.name }}" id="{{ form.description.id_for_label }}" 
+                          class="form-control" rows="4" placeholder="Describe the event in detail..." required></textarea>
+                <div class="help-text">Provide a detailed description of what was detected</div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.confidence_score.id_for_label }}" class="form-label">
+                            <i class="fas fa-percentage me-1"></i>Confidence Score
+                        </label>
+                        <input type="number" name="{{ form.confidence_score.name }}" 
+                               id="{{ form.confidence_score.id_for_label }}" 
+                               class="form-control" min="0" max="100" step="0.1" 
+                               placeholder="85.5">
+                        <div class="help-text">Detection confidence (0-100%)</div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.screenshot_path.id_for_label }}" class="form-label">
+                            <i class="fas fa-image me-1"></i>Screenshot Path
+                        </label>
+                        <input type="text" name="{{ form.screenshot_path.name }}" 
+                               id="{{ form.screenshot_path.id_for_label }}" 
+                               class="form-control" placeholder="/path/to/screenshot.png">
+                        <div class="help-text">Path to the screenshot file (optional)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.session_id.id_for_label }}" class="form-label">
+                            <i class="fas fa-clock me-1"></i>Session ID
+                        </label>
+                        <input type="text" name="{{ form.session_id.name }}" 
+                               id="{{ form.session_id.id_for_label }}" 
+                               class="form-control" placeholder="session_123">
+                        <div class="help-text">Exam session identifier (optional)</div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.user_id.id_for_label }}" class="form-label">
+                            <i class="fas fa-user me-1"></i>User ID
+                        </label>
+                        <input type="text" name="{{ form.user_id.name }}" 
+                               id="{{ form.user_id.id_for_label }}" 
+                               class="form-control" placeholder="user_123">
+                        <div class="help-text">User identifier (optional)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.metadata.id_for_label }}" class="form-label">
+                    <i class="fas fa-code me-1"></i>Metadata (JSON)
+                </label>
+                <textarea name="{{ form.metadata.name }}" id="{{ form.metadata.id_for_label }}" 
+                          class="form-control" rows="4" 
+                          placeholder='{"detection_method": "yolo", "frame_count": 150}'></textarea>
+                <div class="help-text">Additional metadata in JSON format (optional)</div>
+                <div class="metadata-example">
+                    Example: {"detection_method": "yolo", "frame_count": 150, "coordinates": {"x": 100, "y": 200}}
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-submit btn-lg">
+                    <i class="fas fa-plus me-2"></i>Add Event to Blockchain
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-generate session ID if not provided
+document.getElementById('{{ form.session_id.id_for_label }}').addEventListener('focus', function() {
+    if (!this.value) {
+        this.value = 'session_' + Date.now();
+    }
+});
+
+// Auto-generate user ID if not provided
+document.getElementById('{{ form.user_id.id_for_label }}').addEventListener('focus', function() {
+    if (!this.value) {
+        this.value = 'user_' + Math.random().toString(36).substr(2, 9);
+    }
+});
+
+// Validate JSON metadata
+document.getElementById('{{ form.metadata.id_for_label }}').addEventListener('blur', function() {
+    if (this.value.trim()) {
+        try {
+            JSON.parse(this.value);
+            this.style.borderColor = '#27ae60';
+        } catch (e) {
+            this.style.borderColor = '#e74c3c';
+            alert('Invalid JSON format in metadata field');
+        }
+    }
+});
+</script>
+{% endblock %} 

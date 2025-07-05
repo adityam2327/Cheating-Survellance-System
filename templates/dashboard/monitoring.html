@@ -1,0 +1,603 @@
+{% extends 'base.html' %}
+
+{% block title %}Live Monitoring - Surveillance System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .video-container {
+        position: relative;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .video-feed {
+        width: 100%;
+        height: 500px;
+        background: #000;
+        border-radius: 15px;
+    }
+    
+    .controls-panel {
+        background: rgba(0,0,0,0.8);
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 15px;
+        color: white;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-active {
+        background-color: #27ae60;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-inactive {
+        background-color: #e74c3c;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    .detection-panel {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-top: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    .detection-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .detection-item:last-child {
+        border-bottom: none;
+    }
+    
+    .detection-status {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .status-normal {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-video me-2"></i>Live Monitoring
+                    <span class="status-indicator status-active" id="connectionStatus"></span>
+                    <span id="connectionText">Connected</span>
+                    <span class="badge bg-success ms-2" id="systemStatus">System Ready</span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="video-error" class="alert alert-danger m-3" style="display: none;"></div>
+                <div class="video-container">
+                    <video id="videoFeed" class="video-feed" autoplay muted playsinline>
+                        Your browser does not support the video element.
+                    </video>
+                    <div class="controls-panel">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <button id="startBtn" class="btn btn-success me-2">
+                                    <i class="fas fa-play me-1"></i>Start Monitoring
+                                </button>
+                                <button id="stopBtn" class="btn btn-danger me-2" disabled>
+                                    <i class="fas fa-stop me-1"></i>Stop
+                                </button>
+                                <button id="captureBtn" class="btn btn-warning" disabled>
+                                    <i class="fas fa-camera me-1"></i>Capture
+                                </button>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <span class="me-3">
+                                    <i class="fas fa-clock me-1"></i>
+                                    <span id="sessionTimer">00:00:00</span>
+                                </span>
+                                <span>
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    <span id="violationCount">0</span> violations
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="detection-panel">
+            <h6 class="mb-3"><i class="fas fa-eye me-2"></i>Detection Status</h6>
+            
+            <div class="detection-item">
+                <span><i class="fas fa-user me-2"></i>Face Detection</span>
+                <span class="detection-status status-normal" id="faceStatus">Normal</span>
+            </div>
+            
+            <div class="detection-item">
+                <span><i class="fas fa-eye me-2"></i>Eye Movement</span>
+                <span class="detection-status status-normal" id="eyeStatus">Normal</span>
+            </div>
+            
+            <div class="detection-item">
+                <span><i class="fas fa-head-side me-2"></i>Head Pose</span>
+                <span class="detection-status status-normal" id="headStatus">Normal</span>
+            </div>
+            
+            <div class="detection-item">
+                <span><i class="fas fa-mobile-alt me-2"></i>Mobile Detection</span>
+                <span class="detection-status status-normal" id="mobileStatus">Normal</span>
+            </div>
+            
+            <div class="detection-item">
+                <span><i class="fas fa-comment me-2"></i>Lip Movement</span>
+                <span class="detection-status status-normal" id="lipStatus">Normal</span>
+            </div>
+            
+            <div class="detection-item">
+                <span><i class="fas fa-smile me-2"></i>Emotion</span>
+                <span class="detection-status status-normal" id="emotionStatus">Normal</span>
+            </div>
+        </div>
+        
+        <div class="detection-panel mt-3">
+            <h6 class="mb-3"><i class="fas fa-chart-line me-2"></i>Real-time Stats</h6>
+            
+            <div class="detection-item">
+                <span>FPS</span>
+                <span id="fpsCounter">0</span>
+            </div>
+            
+            <div class="detection-item">
+                <span>Processing Time</span>
+                <span id="processingTime">0ms</span>
+            </div>
+            
+            <div class="detection-item">
+                <span>Confidence</span>
+                <span id="confidenceLevel">0%</span>
+            </div>
+        </div>
+        
+        <div class="detection-panel mt-3">
+            <h6 class="mb-3"><i class="fas fa-cog me-2"></i>Settings</h6>
+            
+            <div class="mb-3">
+                <label class="form-label">Detection Sensitivity</label>
+                <input type="range" class="form-range" id="sensitivitySlider" min="1" max="10" value="5">
+                <small class="text-muted">Adjust detection sensitivity</small>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Alert Threshold</label>
+                <input type="range" class="form-range" id="thresholdSlider" min="50" max="100" value="80">
+                <small class="text-muted">Minimum confidence for alerts</small>
+            </div>
+            
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="autoCapture" checked>
+                <label class="form-check-label" for="autoCapture">
+                    Auto-capture violations
+                </label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Violation Log -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Live Violation Log</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Confidence</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="violationLog">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">
+                                    No violations detected yet
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let socket = null;
+let videoStream = null;
+let isMonitoring = false;
+let sessionStartTime = null;
+let sessionTimer = null;
+let violationCount = 0;
+let lastViolationTime = {};
+let violationCooldown = 5000; // 5 seconds cooldown between same violation types
+
+// Initialize monitoring
+document.addEventListener('DOMContentLoaded', function() {
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    
+    startBtn.addEventListener('click', startMonitoring);
+    stopBtn.addEventListener('click', stopMonitoring);
+    captureBtn.addEventListener('click', captureScreenshot);
+    
+    // Auto-start monitoring for demo purposes
+    startMonitoring();
+});
+
+function startMonitoring() {
+    if (isMonitoring) return;
+
+    const videoError = document.getElementById('video-error');
+    videoError.style.display = 'none';
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            const video = document.getElementById('videoFeed');
+            video.srcObject = stream;
+            videoStream = stream;
+            
+            connectWebSocket();
+            
+            isMonitoring = true;
+            sessionStartTime = new Date(); // Start timer
+            violationCount = 0;
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('captureBtn').disabled = false;
+            
+            sessionTimer = setInterval(updateSessionTimer, 1000); // Set interval for timer
+            sendFrames();
+        })
+        .catch(err => {
+            console.error('Error accessing camera:', err);
+            let errorMessage = 'Could not access the camera. Please ensure it is connected and not in use by another application.';
+            if (err.name === 'NotAllowedError') {
+                errorMessage = 'Camera access was denied. Please allow camera access in your browser settings and refresh the page.';
+            } else if (err.name === 'NotFoundError') {
+                errorMessage = 'No camera was found. Please make sure a webcam is connected.';
+            }
+            videoError.textContent = errorMessage;
+            videoError.style.display = 'block';
+            updateConnectionStatus(false);
+        });
+}
+
+function connectWebSocket() {
+    console.log('Attempting WebSocket connection...');
+    socket = new WebSocket('ws://' + window.location.host + '/ws/monitoring/');
+    
+    socket.onopen = function(e) {
+        console.log("WebSocket connection established");
+        updateConnectionStatus(true);
+    };
+    
+    socket.onmessage = function(e) {
+        console.log('WebSocket message received:', e.data.substring(0, 100) + '...');
+        const data = JSON.parse(e.data);
+        handleDetections(data);
+    };
+    
+    socket.onclose = function(e) {
+        console.error('WebSocket connection closed');
+        updateConnectionStatus(false);
+    };
+    
+    socket.onerror = function(e) {
+        console.error('WebSocket error:', e);
+        updateConnectionStatus(false);
+    };
+}
+
+function sendFrames() {
+    if (!isMonitoring || !socket || socket.readyState !== WebSocket.OPEN) {
+        console.log('Cannot send frame - monitoring:', isMonitoring, 'socket state:', socket ? socket.readyState : 'no socket');
+        return;
+    }
+
+    const video = document.getElementById('videoFeed');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const data = canvas.toDataURL('image/jpeg', 0.5);
+    
+    socket.send(JSON.stringify({
+        'image': data
+    }));
+    
+    // Send frames at ~10 FPS
+    setTimeout(sendFrames, 100);
+}
+
+function handleDetections(data) {
+    console.log('Received detection data:', data); // Debug log
+    
+    if (data.status === 'calibrating') {
+        updateDetectionStatus('face', 'calibrating', `Calibrating... ${data.calibration_progress || 0}%`);
+        updateSystemStatus('calibrating');
+        return;
+    }
+    if (data.status === 'calibration_failed') {
+        updateDetectionStatus('face', 'error', 'Calibration Failed');
+        updateSystemStatus('error', 'Calibration Failed');
+        return;
+    }
+    if (data.status === 'error') {
+        console.error('Backend error:', data.message);
+        updateDetectionStatus('face', 'error', 'Processing Error');
+        updateSystemStatus('error', 'Processing Error');
+        return;
+    }
+
+    // Update system status to detecting
+    updateSystemStatus('detecting');
+
+    // Face detection is implicitly OK if we get this far
+    updateDetectionStatus('face', 'Normal');
+
+    // Update Head Pose
+    const headStatus = data.head_direction === 'Looking at Screen' ? 'Normal' : 'Danger';
+    updateDetectionStatus('head', headStatus, data.head_direction);
+
+    // Update Eye Movement
+    const eyeStatus = data.gaze_direction === 'Center' ? 'Normal' : 'Warning';
+    updateDetectionStatus('eye', eyeStatus, data.gaze_direction);
+    
+    // Update Mobile Detection
+    const mobileStatus = data.mobile_detected ? 'Danger' : 'Normal';
+    updateDetectionStatus('mobile', mobileStatus, data.mobile_detected ? "Detected" : "Not Detected");
+
+    // Update Lip Movement
+    const lipStatus = data.lip_state === 'No Movement' ? 'Normal' : 'Warning';
+    updateDetectionStatus('lip', lipStatus, data.lip_state);
+
+    // Update Emotion
+    const emotionStatus = data.emotion === 'Neutral' ? 'Normal' : 'Warning';
+    updateDetectionStatus('emotion', emotionStatus, data.emotion);
+
+    // Handle violations from WebSocket data
+    if (data.violations_detected && data.violations_detected.length > 0) {
+        data.violations_detected.forEach(violation => {
+            const currentTime = Date.now();
+            if (canAddViolation(violation.type, currentTime)) {
+                addViolationLog(violation.description, violation.severity, violation.confidence * 100);
+                lastViolationTime[violation.type] = currentTime;
+            }
+        });
+    }
+
+    // Update real-time stats with debug logging
+    console.log('Updating stats - FPS:', data.fps, 'Processing Time:', data.processing_time, 'Confidence:', data.confidence);
+    document.getElementById('fpsCounter').textContent = data.fps ? data.fps.toFixed(1) : '0';
+    document.getElementById('processingTime').textContent = data.processing_time ? `${data.processing_time.toFixed(0)}ms` : '0ms';
+    document.getElementById('confidenceLevel').textContent = data.confidence ? `${data.confidence.toFixed(2)}%` : '0%';
+    
+    // Update session duration if available
+    if (data.session_duration) {
+        const hours = Math.floor(data.session_duration / 3600);
+        const minutes = Math.floor((data.session_duration % 3600) / 60);
+        const seconds = data.session_duration % 60;
+        document.getElementById('sessionTimer').textContent = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Update system status to ready if everything is working
+    updateSystemStatus('ready');
+}
+
+function canAddViolation(type, currentTime) {
+    return !lastViolationTime[type] || (currentTime - lastViolationTime[type]) > violationCooldown;
+}
+
+function stopMonitoring() {
+    isMonitoring = false;
+    
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+    }
+    
+    if (socket) {
+        socket.close();
+    }
+    
+    if (sessionTimer) {
+        clearInterval(sessionTimer); // Stop timer
+        sessionTimer = null;
+    }
+    
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    document.getElementById('captureBtn').disabled = true;
+}
+
+function updateConnectionStatus(connected) {
+    const statusIndicator = document.getElementById('connectionStatus');
+    const statusText = document.getElementById('connectionText');
+    const systemStatus = document.getElementById('systemStatus');
+    
+    if (connected) {
+        statusIndicator.className = 'status-indicator status-active';
+        statusText.textContent = 'Connected';
+        systemStatus.className = 'badge bg-success ms-2';
+        systemStatus.textContent = 'System Ready';
+    } else {
+        statusIndicator.className = 'status-indicator status-inactive';
+        statusText.textContent = 'Disconnected';
+        systemStatus.className = 'badge bg-danger ms-2';
+        systemStatus.textContent = 'Connection Lost';
+    }
+}
+
+function updateSystemStatus(status, message) {
+    const systemStatus = document.getElementById('systemStatus');
+    
+    switch(status) {
+        case 'calibrating':
+            systemStatus.className = 'badge bg-warning ms-2';
+            systemStatus.textContent = 'Calibrating...';
+            break;
+        case 'ready':
+            systemStatus.className = 'badge bg-success ms-2';
+            systemStatus.textContent = 'Monitoring Active';
+            break;
+        case 'error':
+            systemStatus.className = 'badge bg-danger ms-2';
+            systemStatus.textContent = 'System Error';
+            break;
+        case 'detecting':
+            systemStatus.className = 'badge bg-info ms-2';
+            systemStatus.textContent = 'Detecting...';
+            break;
+        default:
+            systemStatus.className = 'badge bg-secondary ms-2';
+            systemStatus.textContent = message || 'Unknown';
+    }
+}
+
+function updateDetectionStatus(type, status, label) {
+    const statusElement = document.getElementById(type + 'Status');
+    const statusClass = status.toLowerCase() === 'normal' ? 'status-normal' : 
+                       status.toLowerCase() === 'warning' ? 'status-warning' :
+                       status.toLowerCase() === 'calibrating' ? 'status-warning' : 'status-danger';
+    
+    statusElement.className = `detection-status ${statusClass}`;
+    statusElement.textContent = label || (status.charAt(0).toUpperCase() + status.slice(1));
+}
+
+function addViolationLog(description, type = 'warning', confidence = 0) {
+    const logBody = document.getElementById('violationLog');
+    
+    // Remove placeholder row if exists
+    if (logBody.children.length === 1 && logBody.children[0].children.length === 1) {
+        logBody.innerHTML = '';
+    }
+    
+    const now = new Date();
+    const timeString = now.toLocaleTimeString();
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>${timeString}</td>
+        <td><span class="badge bg-${type === 'danger' ? 'danger' : type === 'warning' ? 'warning' : 'info'}">${type.toUpperCase()}</span></td>
+        <td>${description}</td>
+        <td>${confidence.toFixed(2)}%</td>
+        <td>
+            <button class="btn btn-sm btn-outline-primary" onclick="reviewViolation(this)">
+                <i class="fas fa-eye me-1"></i>Review
+            </button>
+        </td>
+    `;
+    
+    logBody.insertBefore(row, logBody.firstChild);
+    
+    // Limit log entries
+    if (logBody.children.length > 10) {
+        logBody.removeChild(logBody.lastChild);
+    }
+    
+    // Update violation count
+    if (type === 'danger' || type === 'warning') {
+        violationCount++;
+        document.getElementById('violationCount').textContent = violationCount;
+    }
+}
+
+function captureScreenshot() {
+    const video = document.getElementById('videoFeed');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    
+    // Create download link
+    const link = document.createElement('a');
+    link.download = `screenshot_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+    
+    addViolationLog('Screenshot captured', 'info');
+}
+
+function reviewViolation(button) {
+    const row = button.closest('tr');
+    const description = row.children[2].textContent;
+    
+    // Show review modal or navigate to violation detail
+    alert(`Reviewing violation: ${description}`);
+}
+
+function updateSessionTimer() {
+    if (!sessionStartTime) return;
+    const now = new Date();
+    const diff = now - sessionStartTime;
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    
+    document.getElementById('sessionTimer').textContent = 
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+</script>
+{% endblock %}

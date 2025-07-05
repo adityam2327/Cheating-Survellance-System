@@ -1,0 +1,581 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Blockchain Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .blockchain-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    .blockchain-stats h2 {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    
+    .blockchain-stats p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: transform 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    
+    .metric-label {
+        color: #666;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .event-card {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left: 4px solid var(--primary-color);
+        transition: all 0.3s ease;
+    }
+    
+    .event-card:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .severity-high {
+        border-left-color: var(--danger-color);
+    }
+    
+    .severity-medium {
+        border-left-color: var(--warning-color);
+    }
+    
+    .severity-low {
+        border-left-color: var(--success-color);
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    .real-time-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background-color: #27ae60;
+        border-radius: 50%;
+        margin-right: 10px;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    .blockchain-nav {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    .blockchain-nav .nav-link {
+        color: var(--primary-color);
+        border-radius: 25px;
+        padding: 10px 20px;
+        margin: 5px;
+        transition: all 0.3s ease;
+    }
+    
+    .blockchain-nav .nav-link:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .blockchain-nav .nav-link.active {
+        background: var(--primary-color);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Blockchain Navigation -->
+    <div class="blockchain-nav">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="mb-0">
+                    <i class="fas fa-link me-2"></i>
+                    Blockchain Dashboard
+                </h1>
+            </div>
+            <div class="col-md-6">
+                <nav class="nav justify-content-end">
+                    <a class="nav-link active" href="{% url 'blockchain:blockchain-dashboard' %}">
+                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="{% url 'blockchain:block-explorer' %}">
+                        <i class="fas fa-cubes me-1"></i> Block Explorer
+                    </a>
+                    <a class="nav-link" href="{% url 'blockchain:blockchain-add-event' %}">
+                        <i class="fas fa-plus me-1"></i> Add Event
+                    </a>
+                    <a class="nav-link" href="{% url 'blockchain:blockchain-logs-html' %}">
+                        <i class="fas fa-list me-1"></i> All Logs
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Statistics -->
+    <div class="blockchain-stats">
+        <div class="row">
+            <div class="col-md-3">
+                <h2>{{ chain_length }}</h2>
+                <p>Total Blocks</p>
+            </div>
+            <div class="col-md-3">
+                <h2>{{ stats.total_events }}</h2>
+                <p>Total Events</p>
+            </div>
+            <div class="col-md-3">
+                <h2>{{ pending_events }}</h2>
+                <p>Pending Events</p>
+            </div>
+            <div class="col-md-3">
+                <h2>{{ stats.average_mining_time|floatformat:2 }}s</h2>
+                <p>Avg Mining Time</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Charts Section -->
+        <div class="col-lg-8">
+            <!-- Daily Events Chart -->
+            <div class="chart-container">
+                <h4><i class="fas fa-chart-line me-2"></i>Daily Events (Last 7 Days)</h4>
+                <canvas id="dailyEventsChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- Events by Type Chart -->
+            <div class="chart-container">
+                <h4><i class="fas fa-chart-pie me-2"></i>Events by Type</h4>
+                <canvas id="eventsByTypeChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Events -->
+        <div class="col-lg-4">
+            <div class="chart-container">
+                <h4>
+                    <span class="real-time-indicator"></span>
+                    Recent Events
+                </h4>
+                <div id="recentEvents">
+                    {% for event in recent_events %}
+                    <div class="event-card severity-{{ event.severity|lower }}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">{{ event.event_type }}</h6>
+                                <p class="mb-1 text-muted">{{ event.description|truncatechars:50 }}</p>
+                                <small class="text-muted">
+                                    {{ event.timestamp|date:'M d, H:i' }} • 
+                                    Confidence: {{ event.confidence_score|floatformat:1 }}%
+                                </small>
+                            </div>
+                            <span class="badge bg-{{ event.severity|lower }}">{{ event.severity }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">No recent events</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="row">
+                <div class="col-6">
+                    <div class="metric-card text-center">
+                        <div class="metric-value">{{ stats.total_blocks }}</div>
+                        <div class="metric-label">Blocks</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="metric-card text-center">
+                        <div class="metric-value">{{ stats.last_mining_time|floatformat:2 }}s</div>
+                        <div class="metric-label">Last Mining</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Events by Severity -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="chart-container">
+                <h4><i class="fas fa-exclamation-triangle me-2"></i>Events by Severity</h4>
+                <canvas id="eventsBySeverityChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// WebSocket connection for real-time updates
+let blockchainSocket = null;
+
+function connectWebSocket() {
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${wsScheme}://${window.location.host}/ws/blockchain/`;
+    
+    blockchainSocket = new WebSocket(wsUrl);
+    
+    blockchainSocket.onopen = function(e) {
+        console.log('Blockchain WebSocket connected');
+        // Subscribe to real-time updates
+        blockchainSocket.send(JSON.stringify({
+            'type': 'subscribe_events'
+        }));
+    };
+    
+    blockchainSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        handleWebSocketMessage(data);
+    };
+    
+    blockchainSocket.onclose = function(e) {
+        console.log('Blockchain WebSocket disconnected');
+        // Reconnect after 5 seconds
+        setTimeout(connectWebSocket, 5000);
+    };
+    
+    blockchainSocket.onerror = function(e) {
+        console.error('Blockchain WebSocket error:', e);
+    };
+}
+
+function handleWebSocketMessage(data) {
+    switch(data.type) {
+        case 'initial_stats':
+        case 'blockchain_stats':
+            updateDashboardStats(data.data);
+            break;
+        case 'recent_events':
+            updateRecentEventsList(data.data);
+            break;
+        case 'event_update':
+            addNewEvent(data.data);
+            break;
+        case 'block_mined':
+            handleNewBlock(data.data);
+            break;
+        case 'error':
+            console.error('WebSocket error:', data.message);
+            break;
+    }
+}
+
+function updateDashboardStats(stats) {
+    // Update main statistics
+    document.querySelector('.blockchain-stats h2:nth-child(1)').textContent = stats.chain_length || 0;
+    document.querySelector('.blockchain-stats h2:nth-child(2)').textContent = stats.total_events || 0;
+    document.querySelector('.blockchain-stats h2:nth-child(3)').textContent = stats.pending_events || 0;
+    document.querySelector('.blockchain-stats h2:nth-child(4)').textContent = (stats.average_mining_time || 0).toFixed(2) + 's';
+    
+    // Update quick stats
+    document.querySelector('.metric-value:nth-child(1)').textContent = stats.total_blocks || 0;
+    document.querySelector('.metric-value:nth-child(2)').textContent = (stats.last_mining_time || 0).toFixed(2) + 's';
+    
+    // Update charts if data is available
+    if (stats.events_by_type) {
+        updateEventsByTypeChart(stats.events_by_type);
+    }
+    if (stats.events_by_severity) {
+        updateEventsBySeverityChart(stats.events_by_severity);
+    }
+}
+
+function updateRecentEventsList(events) {
+    const container = document.getElementById('recentEvents');
+    container.innerHTML = '';
+    
+    events.forEach(event => {
+        const eventCard = document.createElement('div');
+        eventCard.className = `event-card severity-${event.severity.toLowerCase()}`;
+        eventCard.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-1">${event.event_type}</h6>
+                    <p class="mb-1 text-muted">${event.description.substring(0, 50)}${event.description.length > 50 ? '...' : ''}</p>
+                    <small class="text-muted">
+                        ${event.formatted_time} • 
+                        Confidence: ${event.confidence_score.toFixed(1)}%
+                    </small>
+                </div>
+                <span class="badge bg-${event.severity.toLowerCase()}">${event.severity}</span>
+            </div>
+        `;
+        container.appendChild(eventCard);
+    });
+}
+
+function addNewEvent(event) {
+    const container = document.getElementById('recentEvents');
+    const eventCard = document.createElement('div');
+    eventCard.className = `event-card severity-${event.severity.toLowerCase()}`;
+    eventCard.style.animation = 'slideIn 0.5s ease-out';
+    eventCard.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h6 class="mb-1">${event.event_type}</h6>
+                <p class="mb-1 text-muted">${event.description.substring(0, 50)}${event.description.length > 50 ? '...' : ''}</p>
+                <small class="text-muted">
+                    ${event.formatted_time} • 
+                    Confidence: ${event.confidence_score.toFixed(1)}%
+                </small>
+            </div>
+            <span class="badge bg-${event.severity.toLowerCase()}">${event.severity}</span>
+        </div>
+    `;
+    
+    // Add to the beginning of the list
+    container.insertBefore(eventCard, container.firstChild);
+    
+    // Remove oldest event if more than 5
+    const events = container.querySelectorAll('.event-card');
+    if (events.length > 5) {
+        events[events.length - 1].remove();
+    }
+    
+    // Show notification
+    showNotification(`New ${event.severity.toLowerCase()} event: ${event.event_type}`);
+}
+
+function handleNewBlock(blockData) {
+    // Update block count
+    const blockCountElement = document.querySelector('.blockchain-stats h2:nth-child(1)');
+    const currentCount = parseInt(blockCountElement.textContent);
+    blockCountElement.textContent = currentCount + 1;
+    
+    // Show notification
+    showNotification(`New block mined! Block #${blockData.index} with ${blockData.events_count} events`);
+    
+    // Update charts after a short delay to allow for data refresh
+    setTimeout(() => {
+        if (blockchainSocket && blockchainSocket.readyState === WebSocket.OPEN) {
+            blockchainSocket.send(JSON.stringify({
+                'type': 'stats_request'
+            }));
+        }
+    }, 1000);
+}
+
+function showNotification(message) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-info alert-dismissible fade show position-fixed';
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        <i class="fas fa-bell me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+function updateEventsByTypeChart(eventsByType) {
+    if (window.eventsByTypeChart) {
+        window.eventsByTypeChart.data.labels = Object.keys(eventsByType);
+        window.eventsByTypeChart.data.datasets[0].data = Object.values(eventsByType);
+        window.eventsByTypeChart.update();
+    }
+}
+
+function updateEventsBySeverityChart(eventsBySeverity) {
+    if (window.eventsBySeverityChart) {
+        window.eventsBySeverityChart.data.labels = Object.keys(eventsBySeverity);
+        window.eventsBySeverityChart.data.datasets[0].data = Object.values(eventsBySeverity);
+        window.eventsBySeverityChart.update();
+    }
+}
+
+// Daily Events Chart
+const dailyEventsCtx = document.getElementById('dailyEventsChart').getContext('2d');
+const dailyEventsChart = new Chart(dailyEventsCtx, {
+    type: 'line',
+    data: {
+        labels: [{% for event in daily_events %}'{{ event.date }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Events',
+            data: [{% for event in daily_events %}{{ event.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+// Events by Type Chart
+const eventsByTypeCtx = document.getElementById('eventsByTypeChart').getContext('2d');
+window.eventsByTypeChart = new Chart(eventsByTypeCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [{% for type, count in events_by_type.items %}'{{ type }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for type, count in events_by_type.items %}{{ count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: [
+                '#667eea',
+                '#764ba2',
+                '#f093fb',
+                '#f5576c',
+                '#4facfe',
+                '#00f2fe'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Events by Severity Chart
+const eventsBySeverityCtx = document.getElementById('eventsBySeverityChart').getContext('2d');
+window.eventsBySeverityChart = new Chart(eventsBySeverityCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for severity, count in events_by_severity.items %}'{{ severity }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Events',
+            data: [{% for severity, count in events_by_severity.items %}{{ count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: [
+                '#e74c3c',
+                '#f39c12',
+                '#27ae60'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+// Add CSS animation for new events
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Initialize WebSocket connection when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    connectWebSocket();
+    
+    // Request initial data
+    setTimeout(() => {
+        if (blockchainSocket && blockchainSocket.readyState === WebSocket.OPEN) {
+            blockchainSocket.send(JSON.stringify({
+                'type': 'stats_request'
+            }));
+            blockchainSocket.send(JSON.stringify({
+                'type': 'events_request',
+                'limit': 5
+            }));
+        }
+    }, 1000);
+});
+
+// Clean up WebSocket on page unload
+window.addEventListener('beforeunload', function() {
+    if (blockchainSocket) {
+        blockchainSocket.close();
+    }
+});
+</script>
+{% endblock %} 

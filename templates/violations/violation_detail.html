@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Violation Detail - Surveillance System{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Violation Detail</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Type</dt>
+            <dd class="col-sm-9"><span class="badge bg-danger">{{ violation.violation_type }}</span></dd>
+
+            <dt class="col-sm-3">Timestamp</dt>
+            <dd class="col-sm-9">{{ violation.timestamp|date:"M d, Y H:i" }}</dd>
+
+            <dt class="col-sm-3">Confidence</dt>
+            <dd class="col-sm-9">{{ violation.confidence|floatformat:2 }}%</dd>
+
+            <dt class="col-sm-3">Status</dt>
+            <dd class="col-sm-9">
+                {% if violation.is_resolved %}
+                    <span class="badge bg-success">Resolved</span>
+                {% else %}
+                    <span class="badge bg-warning">Pending</span>
+                {% endif %}
+            </dd>
+
+            <dt class="col-sm-3">Description</dt>
+            <dd class="col-sm-9">{{ violation.description }}</dd>
+
+            {% if violation.screenshot_path %}
+            <dt class="col-sm-3">Screenshot</dt>
+            <dd class="col-sm-9">
+                <img src="{{ violation.screenshot_path }}" alt="Screenshot" class="img-fluid rounded shadow">
+            </dd>
+            {% endif %}
+        </dl>
+        <a href="{% url 'violations:violation_list' %}" class="btn btn-secondary mt-3">
+            <i class="fas fa-arrow-left me-1"></i>Back to Violations
+        </a>
+    </div>
+</div>
+{% endblock %} 

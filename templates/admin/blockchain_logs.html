@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Blockchain Logs{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">
+                        <i class="fas fa-link me-2"></i>
+                        Blockchain Logs
+                    </h2>
+                    <p class="mb-0 text-white-50">All blockchain events and transactions</p>
+                </div>
+                <div class="card-body">
+                    {% if blockchain_events %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Event Type</th>
+                                        <th>Severity</th>
+                                        <th>Description</th>
+                                        <th>User ID</th>
+                                        <th>Session ID</th>
+                                        <th>Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in blockchain_events %}
+                                    <tr>
+                                        <td>{{ event.timestamp|date:'Y-m-d H:i:s' }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ event.event_type }}</span>
+                                        </td>
+                                        <td>
+                                            {% if event.severity == 'HIGH' %}
+                                                <span class="badge bg-danger">{{ event.severity }}</span>
+                                            {% elif event.severity == 'MEDIUM' %}
+                                                <span class="badge bg-warning">{{ event.severity }}</span>
+                                            {% else %}
+                                                <span class="badge bg-success">{{ event.severity }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ event.description|truncatechars:50 }}</td>
+                                        <td>{{ event.user_id|default:"N/A" }}</td>
+                                        <td>{{ event.session_id|default:"N/A" }}</td>
+                                        <td>{{ event.confidence_score|floatformat:1 }}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No blockchain events found</h4>
+                            <p class="text-muted">Add some events to see them here.</p>
+                            <a href="{% url 'blockchain:blockchain-add-event' %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i> Add First Event
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
